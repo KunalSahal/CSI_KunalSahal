@@ -20,8 +20,7 @@ This dashboard allows users to:
 
 ```bash
 # Clone this repository
-git clone https://github.com/KunalSahal/CSI_KunalSahalurl
-
+git clone https://github.com/KunalSahal/CSI_KunalSahal
 # Navigate to project directory
 cd kunal_sahal_assignment/Week7
 
