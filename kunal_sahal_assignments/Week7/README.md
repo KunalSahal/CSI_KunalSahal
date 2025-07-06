@@ -16,12 +16,10 @@ This dashboard allows users to:
 - Explore data insights through interactive visualizations
 - Understand model behavior through feature importance and probabilities
 
-## Live Demo
+## 🔗 Live Demo
+[Click here to launch the app](https://kunal-bhardwaj.streamlit.app)
 
 ```bash
-# Checkout the website
-https://kunalsahal.streamlit.app/
-
 # Clone this repository
 git clone https://github.com/KunalSahal/CSI_KunalSahal
 
