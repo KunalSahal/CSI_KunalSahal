@@ -19,8 +19,12 @@ This dashboard allows users to:
 ## Live Demo
 
 ```bash
+# Checkout the website
+https://kunalsahal.streamlit.app/
+
 # Clone this repository
 git clone https://github.com/KunalSahal/CSI_KunalSahal
+
 # Navigate to project directory
 cd kunal_sahal_assignment/Week7
 
