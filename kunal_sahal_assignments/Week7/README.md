@@ -17,7 +17,7 @@ This dashboard allows users to:
 - Understand model behavior through feature importance and probabilities
 
 ## 🔗 Live Demo
-[Click here to launch the app](https://kunal-bhardwaj.streamlit.app)
+[Click here to launch the app](https://kunalsahal.streamlit.app)
 
 ```bash
 # Clone this repository
