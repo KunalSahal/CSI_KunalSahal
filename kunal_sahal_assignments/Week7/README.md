@@ -19,22 +19,6 @@ This dashboard allows users to:
 ## 🔗 Live Demo
 [Click here to launch the app](https://kunalsahal.streamlit.app)
 
-```bash
-# Clone this repository
-git clone https://github.com/KunalSahal/CSI_KunalSahal
-
-# Navigate to project directory
-cd kunal_sahal_assignment/Week7
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-streamlit run ml_app.py
-```
-
-The app will open in your browser at `http://localhost:8501`
-
 ## Datasets & Models
 
 ### Datasets Available:
