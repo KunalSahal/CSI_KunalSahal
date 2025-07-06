@@ -194,24 +194,6 @@ This is my learning project, but I'm open to suggestions. If you find bugs or ha
 3. Make your changes
 4. Submit a pull request
 
-## Contact
-
-- Email: [your-email@example.com]
-- LinkedIn: [your-linkedin-profile]
-- GitHub: [your-github-username]
-
-## Acknowledgments
-
-Special thanks to:
-- Streamlit team for making web deployment so easy
-- scikit-learn contributors for excellent ML libraries
-- My mentors for guidance and support
-- Online tutorials that helped me learn Streamlit
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
 ---
 
 *Built by a data science intern learning Streamlit for the first time.*
