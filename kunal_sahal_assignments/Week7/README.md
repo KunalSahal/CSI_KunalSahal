@@ -20,10 +20,10 @@ This dashboard allows users to:
 
 ```bash
 # Clone this repository
-git clone [your-repo-url]
+git clone https://github.com/KunalSahal/CSI_KunalSahal
 
 # Navigate to project directory
-cd ML_Streamlit_App
+cd kunal_sahal_assignment/Week7
 
 # Install dependencies
 pip install -r requirements.txt
