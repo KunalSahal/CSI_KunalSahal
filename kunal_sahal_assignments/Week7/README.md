@@ -7,6 +7,9 @@
 
 Hello! I'm excited to share my first Streamlit application. As a data science intern, I wanted to create something that demonstrates end-to-end machine learning workflows in an interactive web interface. This project helped me learn how to deploy ML models and make them accessible to non-technical users.
 
+## 🔗 Live Demo
+[Click here to launch the app](https://kunalsahal.streamlit.app)
+
 ## What This App Does
 
 This dashboard allows users to:
@@ -16,8 +19,6 @@ This dashboard allows users to:
 - Explore data insights through interactive visualizations
 - Understand model behavior through feature importance and probabilities
 
-## 🔗 Live Demo
-[Click here to launch the app](https://kunalsahal.streamlit.app)
 
 ## Datasets & Models
 
