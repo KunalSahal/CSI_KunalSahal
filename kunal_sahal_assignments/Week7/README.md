@@ -2,6 +2,7 @@
 # Machine Learning Model Deployment Dashboard
 
 > *My first Streamlit application - A comprehensive ML dashboard for model training, prediction, and analysis*
+> [Click here to launch the app](https://kunalsahal.streamlit.app)
 
 ## About This Project
 
