@@ -341,11 +341,15 @@ if data is not None:
 
             # Numerical features
             numerical_cols = data.select_dtypes(include=[np.number]).columns
-            if len(numerical_cols) > 1:
+            # Numerical features
+            numerical_cols = data.select_dtypes(include=[np.number]).columns
+            numerical_cols_list = list(numerical_cols)  # Convert Index to list
+
+            if len(numerical_cols_list) > 1:
                 selected_num_features = st.multiselect(
                     "Select numerical features to analyze:",
-                    numerical_cols,
-                    default=numerical_cols[:4],
+                    numerical_cols_list,
+                    default=numerical_cols_list[:4],
                 )
 
                 if selected_num_features:
@@ -569,61 +573,29 @@ if data is not None:
             # Generate insights
             insights = generate_genai_insights(data, model, feature_names)
 
-            col1, col2 = st.columns([2, 1])
+            st.markdown("### 🤖 AI Analysis Report")
+            st.markdown(insights)
 
-            with col1:
-                st.markdown("### 🤖 AI Analysis Report")
-                st.markdown(insights)
-
-                # Risk factors visualization
-                st.markdown("### 📊 Risk Factor Analysis")
-                feature_importance = (
-                    pd.DataFrame(
-                        {
-                            "feature": feature_names,
-                            "importance": model.feature_importances_,
-                        }
-                    )
-                    .sort_values("importance", ascending=False)
-                    .head(8)
+            # Risk factors visualization
+            st.markdown("### 📊 Risk Factor Analysis")
+            feature_importance = (
+                pd.DataFrame(
+                    {
+                        "feature": feature_names,
+                        "importance": model.feature_importances_,
+                    }
                 )
+                .sort_values("importance", ascending=False)
+                .head(8)
+            )
 
-                fig = px.treemap(
-                    feature_importance,
-                    path=["feature"],
-                    values="importance",
-                    title="Feature Importance Treemap",
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-            with col2:
-                st.markdown("### 💡 Recommendations")
-
-                recommendations = [
-                    "🎯 Focus on checking account status during assessment",
-                    "📊 Consider credit history as primary factor",
-                    "💰 Evaluate credit amount vs income ratio",
-                    "⏰ Review loan duration carefully",
-                    "👥 Assess employment stability",
-                    "🏠 Consider property ownership",
-                    "📱 Verify contact information",
-                    "🔍 Cross-check with other financial institutions",
-                ]
-
-                for rec in recommendations:
-                    st.write(rec)
-
-                st.markdown("---")
-
-                st.markdown("### 🚀 Next Steps")
-                st.info("""
-                **For Production Deployment:**
-                1. Implement real-time data pipeline
-                2. Add model monitoring & retraining
-                3. Integrate with core banking system
-                4. Set up automated alerts
-                5. Implement A/B testing framework
-                """)
+            fig = px.treemap(
+                feature_importance,
+                path=["feature"],
+                values="importance",
+                title="Feature Importance Treemap",
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
     else:
         st.error("Failed to train the model. Please check your data.")

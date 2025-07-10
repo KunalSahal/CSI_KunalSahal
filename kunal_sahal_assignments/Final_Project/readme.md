@@ -67,14 +67,14 @@ The system uses the **German Credit Dataset** from UCI Machine Learning Reposito
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/yourusername/credit-risk-prediction.git
-   cd credit-risk-prediction
+   git clone https://github.com/KunalSahal/CSI_KunalSahal/tree/master/kunal_sahal_assignments
+   cd Final_Project
    ```
 
 2. **Create Virtual Environment**
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv\Scripts\activate
    ```
 
 3. **Install Dependencies**
@@ -208,13 +208,6 @@ This project demonstrates proficiency in:
 - **GenAI**: AI-powered insights and recommendations
 - **Business Understanding**: Financial risk assessment domain
 
-## 📞 Support & Contact
-
-For questions, suggestions, or collaboration opportunities:
-- **GitHub Issues**: Create an issue for bug reports
-- **Email**: your.email@example.com
-- **LinkedIn**: [Your LinkedIn Profile]
-
 ## 🙏 Acknowledgments
 
 - **UCI Machine Learning Repository** for the German Credit Dataset
@@ -222,10 +215,6 @@ For questions, suggestions, or collaboration opportunities:
 - **Scikit-learn** for robust machine learning algorithms
 - **Plotly** for interactive visualization capabilities
 - **Hans Hofmann** for the original German Credit Dataset
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 References
 
