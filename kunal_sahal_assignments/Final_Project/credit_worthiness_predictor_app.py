@@ -607,7 +607,7 @@ st.markdown("---")
 st.markdown(
     """
 <div style="text-align: center; color: #7f8c8d;">
-    <p>🎓 Built by Data Science Intern | 🚀 Powered by Random Forest & GenAI</p>
+    <p>🎓 Built by Kunal Rajneesh Sahal | 🚀 Powered by Random Forest & GenAI</p>
     <p>📊 German Credit Dataset | 🏦 UCI Machine Learning Repository</p>
 </div>
 """,

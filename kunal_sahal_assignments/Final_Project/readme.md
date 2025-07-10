@@ -225,4 +225,4 @@ This project demonstrates proficiency in:
 
 ---
 
-**Built with ❤️ by a Data Science Intern | Ready to make an impact! 🚀**
+**Built with ❤️ by a Kunal Rajneesh Sahal | Ready to make an impact! 🚀**
