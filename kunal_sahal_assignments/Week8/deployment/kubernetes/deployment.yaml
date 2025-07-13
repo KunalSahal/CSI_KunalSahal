@@ -1,0 +1,327 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loan-approval-app
+  labels:
+    app: loan-approval-app
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: loan-approval-app
+  template:
+    metadata:
+      labels:
+        app: loan-approval-app
+        version: v1.0.0
+    spec:
+      containers:
+      - name: streamlit-app
+        image: loan-approval-app:latest
+        ports:
+        - containerPort: 8501
+        env:
+        - name: STREAMLIT_SERVER_PORT
+          value: "8501"
+        - name: STREAMLIT_SERVER_ADDRESS
+          value: "0.0.0.0"
+        - name: ENVIRONMENT
+          value: "production"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: models-volume
+          mountPath: /app/models
+        - name: logs-volume
+          mountPath: /app/logs
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: loan-data-pvc
+      - name: models-volume
+        persistentVolumeClaim:
+          claimName: loan-models-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: loan-logs-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loan-approval-api
+  labels:
+    app: loan-approval-api
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: loan-approval-api
+  template:
+    metadata:
+      labels:
+        app: loan-approval-api
+        version: v1.0.0
+    spec:
+      containers:
+      - name: api-server
+        image: loan-approval-api:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "info"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: models-volume
+          mountPath: /app/models
+        - name: logs-volume
+          mountPath: /app/logs
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: loan-data-pvc
+      - name: models-volume
+        persistentVolumeClaim:
+          claimName: loan-models-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: loan-logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loan-approval-app-service
+  labels:
+    app: loan-approval-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8501
+    protocol: TCP
+    name: http
+  selector:
+    app: loan-approval-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loan-approval-api-service
+  labels:
+    app: loan-approval-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: loan-approval-api
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: loan-approval-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - loan-approval.example.com
+    secretName: loan-approval-tls
+  rules:
+  - host: loan-approval.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: loan-approval-app-service
+            port:
+              number: 80
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: loan-approval-api-service
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loan-data-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loan-models-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loan-logs-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: fast-ssd
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: loan-approval-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: loan-approval-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: loan-approval-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: loan-approval-api
+  minReplicas: 2
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: loan-approval-monitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: loan-approval-app
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-retraining-job
+spec:
+  schedule: "0 2 * * 0"  # Every Sunday at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: model-retraining
+            image: loan-approval-training:latest
+            command: ["python", "train_models.py"]
+            env:
+            - name: ENVIRONMENT
+              value: "production"
+            volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+            - name: models-volume
+              mountPath: /app/models
+          volumes:
+          - name: data-volume
+            persistentVolumeClaim:
+              claimName: loan-data-pvc
+          - name: models-volume
+            persistentVolumeClaim:
+              claimName: loan-models-pvc
+          restartPolicy: OnFailure 

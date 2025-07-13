@@ -1,0 +1,28 @@
+{
+  "models": {
+    "xgboost": {
+      "n_estimators": 100,
+      "max_depth": 6,
+      "learning_rate": 0.1
+    },
+    "random_forest": {
+      "n_estimators": 100,
+      "max_depth": 10,
+      "min_samples_split": 2
+    },
+    "logistic_regression": {
+      "C": 1.0,
+      "max_iter": 1000
+    }
+  },
+  "preprocessing": {
+    "handle_missing": true,
+    "encode_categorical": true,
+    "scale_numerical": true
+  },
+  "evaluation": {
+    "test_size": 0.2,
+    "cv_folds": 5,
+    "random_state": 42
+  }
+}

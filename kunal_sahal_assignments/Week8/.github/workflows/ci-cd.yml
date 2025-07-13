@@ -1,0 +1,388 @@
+name: CI/CD Pipeline for Loan Approval Assistant
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Code Quality and Testing
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements_txt.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_txt.txt
+        pip install pytest pytest-cov black flake8 mypy
+    
+    - name: Run code formatting check
+      run: |
+        black --check --diff .
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+    
+    - name: Run type checking
+      run: |
+        mypy ml_model_implementation.py rag_system.py app.py --ignore-missing-imports
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+    
+    - name: Run integration tests
+      run: |
+        python -c "
+        import sys
+        sys.path.append('.')
+        from ml_model_implementation import LoanApprovalPredictor
+        from rag_system import RAGSystem
+        print('✅ Integration test: All modules imported successfully')
+        "
+    
+    - name: Security scan
+      uses: snyk/actions/python@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+
+  # Build and Push Docker Images
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'release'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha
+    
+    - name: Build and push Streamlit app
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: streamlit-app
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push API server
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: api-server
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}-api
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Deploy to Staging
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Deploy to staging
+      run: |
+        # Update image tags in deployment files
+        sed -i 's|loan-approval-app:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g' deployment/kubernetes/deployment.yaml
+        sed -i 's|loan-approval-api:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}|g' deployment/kubernetes/deployment.yaml
+        
+        # Apply Kubernetes manifests
+        kubectl apply -f deployment/kubernetes/deployment.yaml
+        kubectl rollout status deployment/loan-approval-app
+        kubectl rollout status deployment/loan-approval-api
+    
+    - name: Run smoke tests
+      run: |
+        # Wait for services to be ready
+        sleep 30
+        
+        # Test health endpoints
+        kubectl port-forward service/loan-approval-app-service 8501:80 &
+        kubectl port-forward service/loan-approval-api-service 8000:80 &
+        
+        sleep 10
+        
+        curl -f http://localhost:8501/_stcore/health || exit 1
+        curl -f http://localhost:8000/health || exit 1
+        
+        echo "✅ Smoke tests passed"
+
+  # Deploy to Production
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Deploy to production
+      run: |
+        # Update image tags in deployment files
+        sed -i 's|loan-approval-app:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g' deployment/kubernetes/deployment.yaml
+        sed -i 's|loan-approval-api:latest|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}|g' deployment/kubernetes/deployment.yaml
+        
+        # Apply Kubernetes manifests
+        kubectl apply -f deployment/kubernetes/deployment.yaml
+        kubectl rollout status deployment/loan-approval-app
+        kubectl rollout status deployment/loan-approval-api
+    
+    - name: Run production tests
+      run: |
+        # Wait for services to be ready
+        sleep 60
+        
+        # Test production endpoints
+        curl -f https://loan-approval.example.com/_stcore/health || exit 1
+        curl -f https://loan-approval.example.com/api/health || exit 1
+        
+        echo "✅ Production deployment successful"
+    
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        text: 'Production deployment successful! 🚀'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Performance Testing
+  performance-test:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Install locust
+      run: pip install locust
+    
+    - name: Run performance tests
+      run: |
+        # Start performance testing
+        locust -f tests/performance/locustfile.py \
+               --host=https://staging.loan-approval.example.com \
+               --users=100 \
+               --spawn-rate=10 \
+               --run-time=5m \
+               --headless \
+               --html=performance_report.html
+    
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: performance_report.html
+
+  # Model Training Pipeline
+  train-models:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements_txt.txt
+        pip install mlflow
+    
+    - name: Download dataset
+      run: |
+        # Download dataset from Kaggle or other source
+        mkdir -p data
+        # Add dataset download logic here
+    
+    - name: Train models
+      run: |
+        python ml_model_implementation.py
+        python rag_system.py
+    
+    - name: Log model metrics
+      run: |
+        mlflow run . -e train_models \
+          -P data_path=data/Training_Dataset.csv \
+          -P experiment_name=loan-approval-production
+    
+    - name: Upload model artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: trained-models
+        path: models/
+
+  # Security and Compliance
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Run Bandit security linter
+      run: |
+        pip install bandit
+        bandit -r . -f json -o bandit-report.json
+    
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-report
+        path: bandit-report.json
+
+  # Documentation Generation
+  docs:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Install documentation dependencies
+      run: |
+        pip install sphinx sphinx-rtd-theme
+        pip install -r requirements_txt.txt
+    
+    - name: Generate API documentation
+      run: |
+        # Generate FastAPI docs
+        python -c "
+        import uvicorn
+        from api.main import app
+        import json
+        openapi_schema = app.openapi()
+        with open('docs/api_spec.json', 'w') as f:
+            json.dump(openapi_schema, f, indent=2)
+        "
+    
+    - name: Build documentation
+      run: |
+        cd docs
+        make html
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html 
