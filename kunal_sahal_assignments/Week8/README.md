@@ -11,6 +11,9 @@ An advanced **Retrieval-Augmented Generation (RAG) Q&A chatbot** system that com
 - **Interpretable AI**: Model explanations and feature importance analysis
 - **Advanced DevOps**: CI/CD pipeline with automated testing and deployment
 
+## 📍 Repository
+**GitHub Repository**: [https://github.com/KunalSahal/CSI_KunalSahal/tree/master/kunal_sahal_assignments/Week8](https://github.com/KunalSahal/CSI_KunalSahal/tree/master/kunal_sahal_assignments/Week8)
+
 ## ✨ Features
 
 ### 🤖 Machine Learning Models
@@ -98,8 +101,8 @@ An advanced **Retrieval-Augmented Generation (RAG) Q&A chatbot** system that com
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/intelligent-loan-approval-assistant.git
-cd intelligent-loan-approval-assistant
+git clone https://github.com/KunalSahal/CSI_KunalSahal.git
+cd CSI_KunalSahal/kunal_sahal_assignments/Week8
 
 # Start the application with Docker Compose
 docker-compose up -d
@@ -114,15 +117,15 @@ docker-compose up -d
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/intelligent-loan-approval-assistant.git
-cd intelligent-loan-approval-assistant
+git clone https://github.com/KunalSahal/CSI_KunalSahal.git
+cd CSI_KunalSahal/kunal_sahal_assignments/Week8
 
 # 2. Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # 3. Install dependencies
-pip install -r requirements_txt.txt
+pip install -r requirements.txt
 
 # 4. Download dataset
 mkdir -p data
@@ -247,7 +250,7 @@ curl -X POST "http://localhost:8000/chat" \
      -d '{"message": "What are the key factors for loan approval?"}'
 ```
 
-## 📁 Project Structure
+## �� Project Structure
 
 ```
 intelligent-loan-approval-assistant/
